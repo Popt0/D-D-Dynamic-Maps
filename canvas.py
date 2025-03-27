@@ -22,6 +22,7 @@ class Canvas(QtWidgets.QLabel):
         self.penSize = DEFAULT_PEN_SIZE
         self.eraserSize = DEFAULT_ERASER_SIZE
         self.displayRef = None
+        self.prevState = pixmap
 
     def setPenSize(self, size):
         if size != "":
@@ -38,6 +39,32 @@ class Canvas(QtWidgets.QLabel):
 
     def setPenColor(self, c):
         self.pen_color = QtGui.QColor(c)
+
+    def undoLast(self):
+        self.setPixmap(self.prevState)
+
+    def mousePressEvent(self, e):
+        self.prevState = self.pixmap().copy()
+
+        painter = QtGui.QPainter(self.pixmap())
+
+        if not self.drawing:
+            painter.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_Clear)
+
+        # Create and set pen for painting
+        pen = painter.pen()
+        if self.drawing:
+            pen.setWidth(self.penSize)
+        else:
+            pen.setWidth(self.eraserSize)
+        pen.setColor(self.pen_color)
+        painter.setPen(pen)
+
+        painter.drawPoint(e.x(), e.y())
+        painter.end()
+        self.update()
+        if self.displayRef is not None:
+            self.displayRef.updatePixmap(self.pixmap())
 
     def mouseMoveEvent(self, e):
         if self.last_x is None:

@@ -44,6 +44,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # Initializes all the buttons used for drawing on the canvas. ie: colors and eraser
     def addPaletteButtons(self, layout):
+        #Add undo button
+        undo = QtWidgets.QPushButton()
+        undo.setFixedSize(24, 24)
+        undoPixmap = QtGui.QPixmap("Assets/undoIcon.png")
+        undoIcon = QtGui.QIcon(undoPixmap)
+        undo.setIcon(undoIcon)
+        undo.setIconSize(QtCore.QSize(int(undo.width() / 1.2), int(undo.height() / 1.2)))
+        undo.clicked.connect(lambda: self.canvas.undoLast())
+        layout.addWidget(undo)
+
         # Add pen size option
         penSizeBox = QSizeInput("Pen:", 2)
         penSizeBox.input.setText(str(DEFAULT_PEN_SIZE))
