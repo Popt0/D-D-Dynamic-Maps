@@ -5,6 +5,7 @@ from displayWindow import *
 
 DEFAULT_MAT = 'Data/Mats/TreeStump.png'
 
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
@@ -27,13 +28,17 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create grid for canvas/map
         # Scale image to viewport and overlay canvas, then add to VBox
         canvasGrid = QtWidgets.QGridLayout()
+        policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Ignored)
         mapPixmap = QtGui.QPixmap(DEFAULT_MAT)
         self.map.setScaledContents(True)
         self.map.setPixmap(mapPixmap)
-        self.map.setFixedSize(960, 540)
+        self.map.setSizePolicy(policy)
         canvasGrid.addWidget(self.map, 0, 0)
+        self.canvas.setSizePolicy(policy)
         canvasGrid.addWidget(self.canvas, 0, 0)
         canvasLayout.addLayout(canvasGrid)
+        self.canvas.setMinimumSize(960, 540)
+        self.canvas.setMaximumSize(int(1920 * .8), int(1080 * 0.8))
 
         # Add HBox containing palette buttons to VBox
         palette = QtWidgets.QHBoxLayout()
@@ -42,9 +47,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.setCentralWidget(canvasWidget)
 
+
     # Initializes all the buttons used for drawing on the canvas. ie: colors and eraser
     def addPaletteButtons(self, layout):
-        #Add undo button
+        # Add undo button
         undo = QtWidgets.QPushButton()
         undo.setFixedSize(24, 24)
         undoPixmap = QtGui.QPixmap("Assets/undoIcon.png")
@@ -60,7 +66,7 @@ class MainWindow(QtWidgets.QMainWindow):
         penSizeBox.input.textChanged.connect(lambda: self.canvas.setPenSize(penSizeBox.getText()))
         layout.addLayout(penSizeBox)
 
-        #Add buttons for color choices
+        # Add buttons for color choices
         for color in COLORS:
             button = QPaletteButton(color)
             button.pressed.connect(lambda c=color: self.canvas.setPenColor(c))
