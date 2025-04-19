@@ -32,11 +32,12 @@ class QScalingView(QtWidgets.QGraphicsView):
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         self.mapItem = scene.mapItem
-
         self.mouseMode = MouseMode.Drawing
         self.lastPos = None
 
         self.zoomFactor = 1.0
+
+        self.setMouseMode(MouseMode.Drawing)
 
     #Handles mouse presses to begin panning
     def mousePressEvent(self, event):

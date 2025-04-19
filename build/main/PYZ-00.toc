@@ -1,4 +1,4 @@
-('C:\\Users\\narut\\PycharmProjects\\pythonProject4\\build\\main\\PYZ-00.pyz',
+('C:\\Users\\narut\\PycharmProjects\\matDisplay\\build\\main\\PYZ-00.pyz',
  [('PyQt5',
    'C:\\Users\\narut\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python310\\site-packages\\PyQt5\\__init__.py',
    'PYMODULE'),
@@ -152,7 +152,7 @@
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.10_3.10.3056.0_x64__qbz5n2kfra8p0\\lib\\dis.py',
    'PYMODULE'),
   ('editorTools',
-   'C:\\Users\\narut\\PycharmProjects\\pythonProject4\\editorTools.py',
+   'C:\\Users\\narut\\PycharmProjects\\matDisplay\\editorTools.py',
    'PYMODULE'),
   ('email',
    'C:\\Program '
@@ -351,7 +351,7 @@
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.10_3.10.3056.0_x64__qbz5n2kfra8p0\\lib\\lzma.py',
    'PYMODULE'),
   ('mapScene',
-   'C:\\Users\\narut\\PycharmProjects\\pythonProject4\\mapScene.py',
+   'C:\\Users\\narut\\PycharmProjects\\matDisplay\\mapScene.py',
    'PYMODULE'),
   ('mimetypes',
    'C:\\Program '
