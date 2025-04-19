@@ -1,4 +1,4 @@
-('C:\\Users\\narut\\PycharmProjects\\matDisplay\\build\\main\\PYZ-00.pyz',
+('C:\\Users\\narut\\PycharmProjects\\pythonProject4\\build\\main\\PYZ-00.pyz',
  [('PyQt5',
    'C:\\Users\\narut\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python310\\site-packages\\PyQt5\\__init__.py',
    'PYMODULE'),
@@ -119,9 +119,6 @@
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.10_3.10.3056.0_x64__qbz5n2kfra8p0\\lib\\calendar.py',
    'PYMODULE'),
-  ('canvas',
-   'C:\\Users\\narut\\PycharmProjects\\matDisplay\\canvas.py',
-   'PYMODULE'),
   ('contextlib',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.10_3.10.3056.0_x64__qbz5n2kfra8p0\\lib\\contextlib.py',
@@ -154,8 +151,8 @@
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.10_3.10.3056.0_x64__qbz5n2kfra8p0\\lib\\dis.py',
    'PYMODULE'),
-  ('displayWindow',
-   'C:\\Users\\narut\\PycharmProjects\\matDisplay\\displayWindow.py',
+  ('editorTools',
+   'C:\\Users\\narut\\PycharmProjects\\pythonProject4\\editorTools.py',
    'PYMODULE'),
   ('email',
    'C:\\Program '
@@ -352,6 +349,9 @@
   ('lzma',
    'C:\\Program '
    'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.10_3.10.3056.0_x64__qbz5n2kfra8p0\\lib\\lzma.py',
+   'PYMODULE'),
+  ('mapScene',
+   'C:\\Users\\narut\\PycharmProjects\\pythonProject4\\mapScene.py',
    'PYMODULE'),
   ('mimetypes',
    'C:\\Program '
