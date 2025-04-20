@@ -5,6 +5,7 @@ from enum import Enum
 
 DEFAULT_PEN_SIZE = 4
 DEFAULT_ERASER_SIZE = 50
+DEFAULT_FIVE_FOOT_SIZE = 50
 
 
 # Different modes the mouse can be in
@@ -13,7 +14,7 @@ class MouseMode(Enum):
     Erasing = 1
     Panning = 2
     Measuring = 3
-    SpellRuler = 4
+    Effect = 4
 
 
 # Scene that contains all active 2D objects
@@ -88,6 +89,8 @@ class QScalingView(QtWidgets.QGraphicsView):
             self.setCursor(QtGui.QCursor(cursorPixmap, hotX=4, hotY=20))
         elif mode == MouseMode.Panning:
             self.setCursor(QtGui.QCursor(Qt.OpenHandCursor))
+        elif mode == MouseMode.Measuring:
+            self.setCursor(QtGui.QCursor(Qt.CrossCursor))
 
 
 class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
@@ -102,22 +105,26 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.prevState = self.canvasPixmap.copy()
         self.penSize = DEFAULT_PEN_SIZE
         self.eraserSize = DEFAULT_ERASER_SIZE
-        self.isDrawing = True
         self.penColor = QtGui.QColor('#000000')
-        self.lastPos = None
+        self.lastPos = QtCore.QPoint()
+
+        self.fiveFootSize = DEFAULT_FIVE_FOOT_SIZE
+        self.measureStart = QtCore.QPoint()
+        self.measureEnd = QtCore.QPoint()
+        self.preservedState = self.canvasPixmap.copy()
 
         self.displayRef = None
         self.mouseMode = MouseMode.Drawing
 
     #Updates the map in viewport and display by drawing edited maps over the main mat
-    def updateMap(self):
+    def updateMap(self, updateDisplay=True):
         newPixmap = self.mapPixmap.copy()
         painter = QtGui.QPainter(newPixmap)
         painter.drawPixmap(0, 0, 1920, 1080, self.canvasPixmap)
         painter.end()
         self.setPixmap(newPixmap)
 
-        if self.displayRef is not None:
+        if self.displayRef is not None and updateDisplay:
             self.displayRef.updatePixmap(newPixmap)
 
     # Resets canvas with new map scaled to fit 1920x1080 display
@@ -128,8 +135,9 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.canvasPixmap.fill(Qt.transparent)
         self.updateMap()
 
-    # Handles mouse presses to begin drawing/erasing
+    # Handles mouse presses dpending on current mouse mode
     def mousePressEvent(self, event):
+        # Drawing and erasing press event handler
         if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
             self.lastPos = event.pos()
             self.prevState = self.canvasPixmap.copy()
@@ -147,14 +155,16 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             painter.drawPoint(event.pos())
             painter.end()
             self.updateMap()
+        # Measuring press event handler
+        elif self.mouseMode == MouseMode.Measuring:
+            self.measureStart = event.pos()
+            self.measureEnd = event.pos()
+            self.preservedState = self.canvasPixmap.copy()
 
-    # Handles mouse movement to draw/erase in a continuous line
+    # Handles mouse movement depending on current mouse mode
     def mouseMoveEvent(self, event):
         if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
             painter = QtGui.QPainter(self.canvasPixmap)
-            if self.lastPos is None:
-                self.lastPos = event.pos()
-                return
 
             pen = painter.pen()
             if self.mouseMode == MouseMode.Erasing:
@@ -169,16 +179,31 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             painter.end()
             self.updateMap()
             self.lastPos = event.pos()
+        elif self.mouseMode == MouseMode.Measuring:
+            self.measureEnd = event.pos()
+            newCanvasPixmap = self.preservedState.copy()
+            painter = QtGui.QPainter(newCanvasPixmap)
+            print("Painter open")
+            measureRect = QtCore.QRect(self.measureStart, self.measureEnd)
+            print("Rect create")
+            painter.drawRect(measureRect.normalized())
+            print("Draw rect")
+            self.canvasPixmap = newCanvasPixmap
+            self.updateMap(updateDisplay=False)
+            print("Complete")
 
-    # Handles mouse release to record last mouse position
+    # Handles mouse release events depending on current mouse mode
     def mouseReleaseEvent(self, event):
-        self.lastPos = None
+        if self.mouseMode == MouseMode.Measuring:
+            if self.measureEnd == self.measureStart:
+                return
+        self.lastPos = QtCore.QPoint()
 
     # Connects canvas to the display window
     def setDisplayRef(self, ref):
         self.displayRef = ref
 
-    # Returns the canvas to it's previous state
+    # Returns the canvas to its previous state
     def undoLast(self):
         self.canvasPixmap = self.prevState
         self.updateMap()

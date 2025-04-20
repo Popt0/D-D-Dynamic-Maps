@@ -28,6 +28,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addPaletteTools(paintLayout)
         mainLayout.addLayout(paintLayout)
 
+        spellLayout = QtWidgets.QHBoxLayout()
+        spellLayout.setAlignment(Qt.AlignCenter)
+        self.addSpellTools(spellLayout)
+        mainLayout.addLayout(spellLayout)
+
         self.setCentralWidget(mainWidget)
         self.mapView.show()
 
@@ -75,25 +80,38 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # Initializes tools for editing and navigating the map viewport
     def addEditorTools(self, layout):
+        # Add file select button
         fileSelect = QIconButton("Assets/openFileIcon.png")
         fileSelect.clicked.connect(lambda: self.promptMapFile())
         layout.addWidget(fileSelect)
 
+        # Add pop out display button
         popOut = QIconButton("Assets/popOutIcon.png")
         popOut.clicked.connect(lambda: self.openDisplay())
         layout.addWidget(popOut)
 
+        # Add toggle display fullscreen button
         fullScreen = QIconButton("Assets/fullScreenIcon.png")
         fullScreen.clicked.connect(lambda: self.toggleDisplayFullScreen())
         layout.addWidget(fullScreen)
 
-        pan = QIconButton("Assets./panningIcon.png")
+        # Add panning button
+        pan = QIconButton("Assets/panningIcon.png")
         pan.clicked.connect(lambda: self.mapView.setMouseMode(MouseMode.Panning))
         layout.addWidget(pan)
 
     #Initializes tools for declaring tile size and spell rulers
     def addSpellTools(self, layout):
-
+        # Add measuring button for spell rulers
+        measureBox = QtWidgets.QHBoxLayout()
+        measureBox.setContentsMargins(0, 0, 0, 0)
+        measure = QIconButton("Assets/rulerIcon.png")
+        measure.clicked.connect(lambda: self.mapView.setMouseMode(MouseMode.Measuring))
+        measureBox.addWidget(measure)
+        measureLabel = QtWidgets.QLabel()
+        measureLabel.setText("5 ft: %s px" % self.mapScene.mapItem.fiveFootSize)
+        measureBox.addWidget(measureLabel)
+        layout.addLayout(measureBox)
 
     # Opens the display window for the player monitor
     def openDisplay(self):
