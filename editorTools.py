@@ -42,6 +42,7 @@ class QSizeInput(QtWidgets.QHBoxLayout):
         self.input.textChanged.connect(self.checkText)
         self.addWidget(self.input)
 
+    # Ensures that only numeric characters are entered
     def checkText(self):
         newString = ""
         change = False
@@ -59,5 +60,6 @@ class QSizeInput(QtWidgets.QHBoxLayout):
             self.input.setText(self.input.toPlainText()[:self.maxChars])
             print(self.input.toPlainText())
 
+    # returns the text in the input box
     def getText(self):
         return self.input.toPlainText()

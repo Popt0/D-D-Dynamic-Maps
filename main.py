@@ -73,6 +73,7 @@ class MainWindow(QtWidgets.QMainWindow):
         erase.setIconSize(QtCore.QSize(int(erase.width()/1.2), int(erase.height()/1.2)))
         layout.addWidget(erase)
 
+    # Initializes tools for editing and navigating the map viewport
     def addEditorTools(self, layout):
         fileSelect = QIconButton("Assets/openFileIcon.png")
         fileSelect.clicked.connect(lambda: self.promptMapFile())
@@ -90,11 +91,17 @@ class MainWindow(QtWidgets.QMainWindow):
         pan.clicked.connect(lambda: self.mapView.setMouseMode(MouseMode.Panning))
         layout.addWidget(pan)
 
+    #Initializes tools for declaring tile size and spell rulers
+    def addSpellTools(self, layout):
+
+
+    # Opens the display window for the player monitor
     def openDisplay(self):
         self.displayMap = QDisplayWindow(self.mapScene.mapItem.pixmap())
         self.displayMap.show()
         self.mapScene.mapItem.setDisplayRef(self.displayMap)
 
+    # Toggles fullscreen on the display window
     def toggleDisplayFullScreen(self):
         if self.displayMap.isVisible:
             if self.displayMap.isFullScreen():
@@ -103,6 +110,7 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.displayMap.showFullScreen()
 
+    # Opens a file explorer to select the battle mat file
     def promptMapFile(self):
         fileDialog = QtWidgets.QFileDialog()
         fileDialog.setNameFilter("Images (*.png *.jpg *.jpeg)")

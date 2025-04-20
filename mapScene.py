@@ -12,6 +12,8 @@ class MouseMode(Enum):
     Drawing = 0
     Erasing = 1
     Panning = 2
+    Measuring = 3
+    SpellRuler = 4
 
 
 # Scene that contains all active 2D objects
@@ -216,11 +218,6 @@ class QDisplayWindow(QtWidgets.QMainWindow):
         self.map.setScaledContents(True)
         self.map.setPixmap(pixmap)
 
+    # sets the battle mat to a different one
     def updatePixmap(self, newMap):
         self.map.setPixmap(newMap)
-
-    def toggleFullScreen(self):
-        if self.isFullScreen():
-            self.showNormal()
-        else:
-            self.showFullscreen()
