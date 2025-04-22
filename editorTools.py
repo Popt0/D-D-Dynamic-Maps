@@ -34,11 +34,11 @@ class QSizeInput(QtWidgets.QHBoxLayout):
 
         self.text = QtWidgets.QLabel()
         self.text.setText(text)
-        self.text.setFixedSize(len(text) * 5, 24)
+        self.text.setFixedSize((5 + (len(text) * 4)), 24)
         self.addWidget(self.text)
 
         self.input = QtWidgets.QTextEdit()
-        self.input.setFixedSize(charLimit * 14, 24)
+        self.input.setFixedSize((15 + (charLimit * 6)), 24)
         self.input.textChanged.connect(self.checkText)
         self.addWidget(self.input)
 

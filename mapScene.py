@@ -2,15 +2,17 @@ from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtCore import Qt
 
 from enum import Enum
-import copy
 
 DEFAULT_PEN_SIZE = 4
 DEFAULT_ERASER_SIZE = 50
 DEFAULT_FIVE_FOOT_SIZE = 50
+DEFAULT_SPELL_SIZE_FT = 10
 
 MEASURE_SQUARE_COLOR = QtGui.QColor("#FF0000")
 MEASURE_SQUARE_OPACITY = 0.2
 MEASURE_SQUARE_WIDTH = 2
+SPELL_WIDTH = 4
+SPELL_OPACITY = 0.3
 
 
 # Different modes the mouse can be in
@@ -19,7 +21,12 @@ class MouseMode(Enum):
     Erasing = 1
     Panning = 2
     Measuring = 3
-    Effect = 4
+    Casting = 4
+
+class SpellType(Enum):
+    Square = 0
+    Circle = 1
+    Cone = 2
 
 
 # Scene that contains all active 2D objects
@@ -83,6 +90,7 @@ class QScalingView(QtWidgets.QGraphicsView):
     def setMouseMode(self, mode):
         self.mouseMode = mode
         self.mapItem.setMouseMode(mode)
+        self.mapItem.setAcceptHoverEvents(False)
 
         if mode == MouseMode.Drawing:
             cursorPixmap = QtGui.QPixmap("Assets/penCursor.png")
@@ -96,6 +104,9 @@ class QScalingView(QtWidgets.QGraphicsView):
             self.setCursor(QtGui.QCursor(Qt.OpenHandCursor))
         elif mode == MouseMode.Measuring:
             self.setCursor(QtGui.QCursor(Qt.CrossCursor))
+        elif mode == MouseMode.Casting:
+            self.mapItem.setAcceptHoverEvents(True)
+            self.setCursor(QtGui.QCursor(Qt.PointingHandCursor))
 
 
 # Primary viewport for map that can be edited allowing for markings or effects on the map to appear to players
@@ -120,6 +131,10 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.measureLabelRef = QtWidgets.QLabel()
         self.preservedState = self.canvasPixmap.copy()
 
+        self.spellSizeFt = DEFAULT_SPELL_SIZE_FT
+        self.spellSize = int((DEFAULT_SPELL_SIZE_FT / 5) * DEFAULT_FIVE_FOOT_SIZE)
+        self.spellType = SpellType.Square
+
         self.displayRef = None
         self.mouseMode = MouseMode.Drawing
 
@@ -140,6 +155,8 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.mapPixmap = self.mapPixmap.scaled(1920, 1080, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.canvasPixmap = QtGui.QPixmap(1920, 1080)
         self.canvasPixmap.fill(Qt.transparent)
+        self.prevState = self.canvasPixmap.copy()
+        self.preservedState = self.canvasPixmap.copy()
         self.updateMap()
 
     # Handles mouse presses depending on current mouse mode
@@ -162,11 +179,17 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             painter.drawPoint(event.pos())
             painter.end()
             self.updateMap()
+            self.preservedState = self.canvasPixmap.copy()
+        # Casting mouse press event handler
+        elif self.mouseMode == MouseMode.Casting:
+            if self.spellType != SpellType.Cone:
+                self.prevState = self.preservedState.copy()
+                self.updateMap()
+                self.preservedState = self.canvasPixmap.copy()
         # Measuring mouse press event handler
         elif self.mouseMode == MouseMode.Measuring:
             self.measureStart = event.pos().toPoint()
             self.measureEnd = event.pos().toPoint
-            self.preservedState = self.canvasPixmap.copy()
 
     # Handles mouse movement depending on current mouse mode
     def mouseMoveEvent(self, event):
@@ -187,6 +210,7 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             painter.end()
             self.updateMap()
             self.lastPos = event.pos()
+            self.preservedState = self.canvasPixmap.copy()
         # Measuring mouse move event handler
         elif self.mouseMode == MouseMode.Measuring:
             mouseEnd = event.pos().toPoint()
@@ -217,20 +241,61 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             newCanvasPixmap = self.preservedState.copy()
             painter = QtGui.QPainter(newCanvasPixmap)
 
-            pen = painter.pen()
+            pen = QtGui.QPen()
             pen.setColor(MEASURE_SQUARE_COLOR)
             pen.setWidth(MEASURE_SQUARE_WIDTH)
             painter.setPen(pen)
 
-            measureRect = QtCore.QRect(self.measureStart, self.measureEnd)
             brushColor = QtGui.QColor(MEASURE_SQUARE_COLOR)
             brushColor.setAlphaF(MEASURE_SQUARE_OPACITY)
             brush = QtGui.QBrush(brushColor, Qt.SolidPattern)
+
+            measureRect = QtCore.QRect(self.measureStart, self.measureEnd)
             painter.drawRect(measureRect.normalized())
             painter.fillRect(measureRect, brush)
 
+            painter.end()
+
             self.canvasPixmap = newCanvasPixmap
             self.updateMap(updateDisplay=False)
+
+    # Handles mouse hover events depending on current mouse mode
+    def hoverMoveEvent(self, event):
+        # Handles casting mouse hover events
+        if self.mouseMode == MouseMode.Casting:
+            if self.spellType == SpellType.Square or self.spellType == SpellType.Circle:
+                newCanvasPixmap = self.preservedState.copy()
+                painter = QtGui.QPainter(newCanvasPixmap)
+
+                pen = QtGui.QPen()
+                pen.setColor(self.penColor)
+                pen.setWidth(SPELL_WIDTH)
+                painter.setPen(pen)
+
+                brushColor = QtGui.QColor(self.penColor)
+                brushColor.setAlphaF(SPELL_OPACITY)
+                brush = QtGui.QBrush(brushColor, Qt.SolidPattern)
+                painter.setBrush(brush)
+                if self.spellType == SpellType.Square:
+                    rectX = int(event.pos().x() - (self.spellSize / 2))
+                    rectY = int(event.pos().y() - (self.spellSize / 2))
+                    rectTopLeft = QtCore.QPoint(rectX, rectY)
+                    spellRect = QtCore.QRect(rectTopLeft, QtCore.QSize(self.spellSize, self.spellSize))
+                    painter.drawRect(spellRect)
+                    #painter.fillRect(spellRect, brush)
+                else:
+                    painter.drawEllipse(event.pos().toPoint(), self.spellSize, self.spellSize)
+
+                painter.end()
+
+                self.canvasPixmap = newCanvasPixmap
+                self.updateMap()
+
+    # Handles mouse leaving hover range depending on mouse mode
+    def hoverLeaveEvent(self, event):
+        if self.mouseMode == MouseMode.Casting:
+            self.canvasPixmap = self.preservedState
+            self.updateMap()
 
     # Handles mouse release events depending on current mouse mode
     def mouseReleaseEvent(self, event):
@@ -243,6 +308,7 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
                 return
             self.canvasPixmap = self.preservedState
             self.fiveFootSize = abs(self.measureStart.x() - self.measureEnd.x())
+            self.setSpellSize(self.spellSizeFt)
             self.measureLabelRef.setText("5 ft: %s px" % self.fiveFootSize)
             self.updateMap()
 
@@ -256,6 +322,7 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.updateMap()
         if self.displayRef is not None:
             self.displayRef.updatePixmap(self.pixmap())
+        self.preservedState = self.canvasPixmap.copy()
 
     # Sets a new size for the draw tool
     def setPenSize(self, size):
@@ -275,8 +342,21 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
     def setMouseMode(self, mode):
         self.mouseMode = mode
 
+    # Sets the text for the label displaying pixel value of a 5 ft distance
     def setMeasureLabel(self, label):
         self.measureLabelRef = label
+
+    # Sets the spell size for both ft and px
+    def setSpellSize(self, size):
+        if size != "":
+            size = int(size)
+            self.spellSizeFt = size
+            self.spellSize = ((self.fiveFootSize * int(size / 5)) +
+                              ((size % 5) * int(self.fiveFootSize / 5)))
+
+    # Sets the spell type to the spell currently being cast
+    def setSpellType(self, spellType):
+        self.spellType = spellType
 
 
 # Window that displays the edited map to the players

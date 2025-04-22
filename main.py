@@ -29,7 +29,6 @@ class MainWindow(QtWidgets.QMainWindow):
         mainLayout.addLayout(paintLayout)
 
         spellLayout = QtWidgets.QHBoxLayout()
-        spellLayout.setAlignment(Qt.AlignCenter)
         self.addSpellTools(spellLayout)
         mainLayout.addLayout(spellLayout)
 
@@ -90,7 +89,7 @@ class MainWindow(QtWidgets.QMainWindow):
         popOut.clicked.connect(lambda: self.openDisplay())
         layout.addWidget(popOut)
 
-        # Add toggle display fullscreen button
+        # Add toggle display full screen button
         fullScreen = QIconButton("Assets/fullScreenIcon.png")
         fullScreen.clicked.connect(lambda: self.toggleDisplayFullScreen())
         layout.addWidget(fullScreen)
@@ -100,8 +99,10 @@ class MainWindow(QtWidgets.QMainWindow):
         pan.clicked.connect(lambda: self.mapView.setMouseMode(MouseMode.Panning))
         layout.addWidget(pan)
 
-    #Initializes tools for declaring tile size and spell rulers
+    # Initializes tools for declaring tile size and spell rulers
     def addSpellTools(self, layout):
+        layout.addStretch()
+
         # Add measuring button for spell rulers
         measureBox = QtWidgets.QHBoxLayout()
         measureBox.setContentsMargins(0, 0, 0, 0)
@@ -114,6 +115,33 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mapScene.mapItem.setMeasureLabel(measureLabel)
         layout.addLayout(measureBox)
 
+        layout.addStretch()
+
+        # Add size input for spell casting
+        spellSize = QSizeInput("Spell Size:", 3)
+        spellSize.input.setText(str(DEFAULT_SPELL_SIZE_FT))
+        spellSize.input.textChanged.connect(lambda: self.mapScene.mapItem.setSpellSize(spellSize.getText()))
+        ftLabel = QtWidgets.QLabel()
+        ftLabel.setText("ft")
+        spellSize.addWidget(ftLabel)
+        layout.addLayout(spellSize)
+
+        layout.addStretch()
+
+        # Add button for square spells
+        squareButton = QIconButton("Assets/squareIcon.png")
+        squareButton.clicked.connect(lambda: self.mapView.setMouseMode(MouseMode.Casting))
+        squareButton.clicked.connect(lambda: self.mapView.mapItem.setSpellType(SpellType.Square))
+        layout.addWidget(squareButton)
+
+        # Add button for circular spells
+        circleButton = QIconButton("Assets/circleIcon.png")
+        circleButton.clicked.connect(lambda: self.mapView.setMouseMode(MouseMode.Casting))
+        circleButton.clicked.connect(lambda: self.mapView.mapItem.setSpellType(SpellType.Circle))
+        layout.addWidget(circleButton)
+
+        layout.addStretch()
+
     # Opens the display window for the player monitor
     def openDisplay(self):
         self.displayMap = QDisplayWindow(self.mapScene.mapItem.pixmap())
@@ -125,7 +153,6 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.displayMap.isVisible:
             if self.displayMap.isFullScreen():
                 self.displayMap.showNormal()
-            #self.displayMap.showFullScreen()
             else:
                 self.displayMap.showFullScreen()
 
