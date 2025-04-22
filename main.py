@@ -111,6 +111,7 @@ class MainWindow(QtWidgets.QMainWindow):
         measureLabel = QtWidgets.QLabel()
         measureLabel.setText("5 ft: %s px" % self.mapScene.mapItem.fiveFootSize)
         measureBox.addWidget(measureLabel)
+        self.mapScene.mapItem.setMeasureLabel(measureLabel)
         layout.addLayout(measureBox)
 
     # Opens the display window for the player monitor

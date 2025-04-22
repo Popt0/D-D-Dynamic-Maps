@@ -2,10 +2,15 @@ from PyQt5 import QtCore, QtGui, QtWidgets, uic
 from PyQt5.QtCore import Qt
 
 from enum import Enum
+import copy
 
 DEFAULT_PEN_SIZE = 4
 DEFAULT_ERASER_SIZE = 50
 DEFAULT_FIVE_FOOT_SIZE = 50
+
+MEASURE_SQUARE_COLOR = QtGui.QColor("#FF0000")
+MEASURE_SQUARE_OPACITY = 0.2
+MEASURE_SQUARE_WIDTH = 2
 
 
 # Different modes the mouse can be in
@@ -27,7 +32,7 @@ class QMapScene(QtWidgets.QGraphicsScene):
         self.addItem(self.mapItem)
 
 
-# Viewport for displaying the scene to the editor
+# Viewport for displaying the scene to the primary user
 class QScalingView(QtWidgets.QGraphicsView):
     def __init__(self, scene):
         super().__init__(scene)
@@ -42,7 +47,7 @@ class QScalingView(QtWidgets.QGraphicsView):
 
         self.setMouseMode(MouseMode.Drawing)
 
-    #Handles mouse presses to begin panning
+    # Handles mouse presses to begin panning
     def mousePressEvent(self, event):
         if self.mouseMode == MouseMode.Panning:
             self.lastPos = event.pos()
@@ -74,7 +79,7 @@ class QScalingView(QtWidgets.QGraphicsView):
         transform.scale(self.zoomFactor, self.zoomFactor)
         self.setTransform(transform)
 
-    #sets a new value for the mouse input mode
+    # Sets a new value for the mouse input mode
     def setMouseMode(self, mode):
         self.mouseMode = mode
         self.mapItem.setMouseMode(mode)
@@ -93,6 +98,7 @@ class QScalingView(QtWidgets.QGraphicsView):
             self.setCursor(QtGui.QCursor(Qt.CrossCursor))
 
 
+# Primary viewport for map that can be edited allowing for markings or effects on the map to appear to players
 class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
     def __init__(self, pixmap):
         super().__init__(pixmap)
@@ -111,12 +117,13 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.fiveFootSize = DEFAULT_FIVE_FOOT_SIZE
         self.measureStart = QtCore.QPoint()
         self.measureEnd = QtCore.QPoint()
+        self.measureLabelRef = QtWidgets.QLabel()
         self.preservedState = self.canvasPixmap.copy()
 
         self.displayRef = None
         self.mouseMode = MouseMode.Drawing
 
-    #Updates the map in viewport and display by drawing edited maps over the main mat
+    # Updates the map in viewport and display by drawing edited maps over the main mat
     def updateMap(self, updateDisplay=True):
         newPixmap = self.mapPixmap.copy()
         painter = QtGui.QPainter(newPixmap)
@@ -135,9 +142,9 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.canvasPixmap.fill(Qt.transparent)
         self.updateMap()
 
-    # Handles mouse presses dpending on current mouse mode
+    # Handles mouse presses depending on current mouse mode
     def mousePressEvent(self, event):
-        # Drawing and erasing press event handler
+        # Drawing and erasing mouse press event handler
         if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
             self.lastPos = event.pos()
             self.prevState = self.canvasPixmap.copy()
@@ -155,14 +162,15 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             painter.drawPoint(event.pos())
             painter.end()
             self.updateMap()
-        # Measuring press event handler
+        # Measuring mouse press event handler
         elif self.mouseMode == MouseMode.Measuring:
-            self.measureStart = event.pos()
-            self.measureEnd = event.pos()
+            self.measureStart = event.pos().toPoint()
+            self.measureEnd = event.pos().toPoint
             self.preservedState = self.canvasPixmap.copy()
 
     # Handles mouse movement depending on current mouse mode
     def mouseMoveEvent(self, event):
+        # Drawing and erasing mouse move event handler
         if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
             painter = QtGui.QPainter(self.canvasPixmap)
 
@@ -179,25 +187,64 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             painter.end()
             self.updateMap()
             self.lastPos = event.pos()
+        # Measuring mouse move event handler
         elif self.mouseMode == MouseMode.Measuring:
-            self.measureEnd = event.pos()
+            mouseEnd = event.pos().toPoint()
+            xDiff = self.measureStart.x() - mouseEnd.x()
+            yDiff = self.measureStart.y() - mouseEnd.y()
+
+            # Makes Y distance the same as X distance if X distance is wider
+            if abs(xDiff) > abs(yDiff):
+                # Makes the square go upwards if mouse is higher than where it started
+                if yDiff > 0:
+                    yAdjusted = self.measureStart.y() - abs(xDiff)
+                    self.measureEnd = QtCore.QPoint(mouseEnd.x(), yAdjusted)
+                # Makes the square go downwards if mouse is lower than or the same as where it started
+                else:
+                    yAdjusted = self.measureStart.y() + abs(xDiff)
+                    self.measureEnd = QtCore.QPoint(mouseEnd.x(), yAdjusted)
+            # Makes X distance the same as Y distance if Y distance is wider
+            else:
+                # Makes the square go left if mouse is left of where it started
+                if xDiff > 0:
+                    xAdjusted = self.measureStart.x() - abs(yDiff)
+                    self.measureEnd = QtCore.QPoint(xAdjusted, mouseEnd.y())
+                # Makes the square go right if the mouse is right of or the same as where it started
+                else:
+                    xAdjusted = self.measureStart.x() + abs(yDiff)
+                    self.measureEnd = QtCore.QPoint(xAdjusted, mouseEnd.y())
+
             newCanvasPixmap = self.preservedState.copy()
             painter = QtGui.QPainter(newCanvasPixmap)
-            print("Painter open")
+
+            pen = painter.pen()
+            pen.setColor(MEASURE_SQUARE_COLOR)
+            pen.setWidth(MEASURE_SQUARE_WIDTH)
+            painter.setPen(pen)
+
             measureRect = QtCore.QRect(self.measureStart, self.measureEnd)
-            print("Rect create")
+            brushColor = QtGui.QColor(MEASURE_SQUARE_COLOR)
+            brushColor.setAlphaF(MEASURE_SQUARE_OPACITY)
+            brush = QtGui.QBrush(brushColor, Qt.SolidPattern)
             painter.drawRect(measureRect.normalized())
-            print("Draw rect")
+            painter.fillRect(measureRect, brush)
+
             self.canvasPixmap = newCanvasPixmap
             self.updateMap(updateDisplay=False)
-            print("Complete")
 
     # Handles mouse release events depending on current mouse mode
     def mouseReleaseEvent(self, event):
-        if self.mouseMode == MouseMode.Measuring:
+        # Drawing and erasing mouse release event handler
+        if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
+            self.lastPos = QtCore.QPoint()
+        # Measuring mouse release event handler
+        elif self.mouseMode == MouseMode.Measuring:
             if self.measureEnd == self.measureStart:
                 return
-        self.lastPos = QtCore.QPoint()
+            self.canvasPixmap = self.preservedState
+            self.fiveFootSize = abs(self.measureStart.x() - self.measureEnd.x())
+            self.measureLabelRef.setText("5 ft: %s px" % self.fiveFootSize)
+            self.updateMap()
 
     # Connects canvas to the display window
     def setDisplayRef(self, ref):
@@ -220,10 +267,6 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         if size != "":
             self.eraserSize = int(size)
 
-    # delete soon
-    def setDrawing(self, drawing):
-        self.isDrawing = drawing
-
     # Sets a color for the draw tool
     def setPenColor(self, color):
         self.penColor = QtGui.QColor(color)
@@ -232,7 +275,11 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
     def setMouseMode(self, mode):
         self.mouseMode = mode
 
+    def setMeasureLabel(self, label):
+        self.measureLabelRef = label
 
+
+# Window that displays the edited map to the players
 class QDisplayWindow(QtWidgets.QMainWindow):
     def __init__(self, pixmap):
         super().__init__()
