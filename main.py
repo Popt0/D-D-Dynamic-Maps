@@ -117,6 +117,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         layout.addStretch()
 
+        # Add check box to allow players to see spells before they are cast
+        showPlayerBox = QtWidgets.QCheckBox()
+        showPlayerBox.setChecked(True)
+        showPlayerBox.setText("Show to Players")
+        showPlayerBox.clicked.connect(lambda: self.mapScene.mapItem.setShowPlayers(showPlayerBox.checkState()))
+        layout.addWidget(showPlayerBox)
+
+        layout.addStretch()
+
         # Add size input for spell casting
         spellSize = QSizeInput("Spell Size:", 3)
         spellSize.input.setText(str(DEFAULT_SPELL_SIZE_FT))
@@ -140,6 +149,12 @@ class MainWindow(QtWidgets.QMainWindow):
         circleButton.clicked.connect(lambda: self.mapView.mapItem.setSpellType(SpellType.Circle))
         layout.addWidget(circleButton)
 
+        # Add button for conic spells
+        coneButton = QIconButton("Assets/coneIcon.png")
+        coneButton.clicked.connect(lambda: self.mapView.setMouseMode(MouseMode.Casting))
+        coneButton.clicked.connect(lambda: self.mapView.mapItem.setSpellType(SpellType.Cone))
+        layout.addWidget(coneButton)
+
         layout.addStretch()
 
     # Opens the display window for the player monitor
@@ -148,7 +163,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.displayMap.show()
         self.mapScene.mapItem.setDisplayRef(self.displayMap)
 
-    # Toggles fullscreen on the display window
+    # Toggles full screen on the display window
     def toggleDisplayFullScreen(self):
         if self.displayMap.isVisible:
             if self.displayMap.isFullScreen():
