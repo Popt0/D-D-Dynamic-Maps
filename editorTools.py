@@ -18,11 +18,18 @@ class QIconButton(QtWidgets.QPushButton):
     def __init__(self, iconPath):
         super().__init__()
         self.setFixedSize(QtCore.QSize(24, 24))
-        pm = QtGui.QPixmap(iconPath)
-        icon = QtGui.QIcon(pm)
+        self.pm = QtGui.QPixmap(iconPath)
+        icon = QtGui.QIcon(self.pm)
         self.setIcon(icon)
         self.setIconSize(QtCore.QSize(int(self.width()/1.2), int(self.height()/1.2)))
 
+    def mirrorIcon(self, horizontal, vertical):
+        img = self.pm.toImage()
+        img = img.mirrored(horizontal, vertical)
+        self.pm = QtGui.QPixmap.fromImage(img)
+        icon = QtGui.QIcon(self.pm)
+        self.setIcon(icon)
+        self.setIconSize(QtCore.QSize(int(self.width() / 1.2), int(self.height() / 1.2)))
 
 
 class QSizeInput(QtWidgets.QHBoxLayout):

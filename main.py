@@ -40,14 +40,15 @@ class MainWindow(QtWidgets.QMainWindow):
     # Initializes all the buttons used for drawing on the canvas. ie: colors and eraser
     def addPaletteTools(self, layout):
         # Add undo button
-        undo = QtWidgets.QPushButton()
-        undo.setFixedSize(24, 24)
-        undoPixmap = QtGui.QPixmap("Assets/undoIcon.png")
-        undoIcon = QtGui.QIcon(undoPixmap)
-        undo.setIcon(undoIcon)
-        undo.setIconSize(QtCore.QSize(int(undo.width() / 1.2), int(undo.height() / 1.2)))
-        undo.clicked.connect(lambda: self.mapScene.mapItem.undoLast())
+        undo = QIconButton("Assets/undoIcon.png")
+        undo.clicked.connect(lambda: self.mapScene.mapItem.undoEdit())
         layout.addWidget(undo)
+
+        # Add redo button
+        redo = QIconButton("Assets/undoIcon.png")
+        redo.clicked.connect(lambda: self.mapScene.mapItem.redoEdit())
+        redo.mirrorIcon(True, False)
+        layout.addWidget(redo)
 
         # Add pen size option
         penSizeBox = QSizeInput("Pen:", 2)
@@ -120,7 +121,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Add check box to allow players to see spells before they are cast
         showPlayerBox = QtWidgets.QCheckBox()
         showPlayerBox.setChecked(True)
-        showPlayerBox.setText("Show to Players")
+        showPlayerBox.setText("Show Players Spells")
         showPlayerBox.clicked.connect(lambda: self.mapScene.mapItem.setShowPlayers(showPlayerBox.checkState()))
         layout.addWidget(showPlayerBox)
 

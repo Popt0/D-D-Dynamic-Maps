@@ -120,7 +120,6 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.canvasPixmap = QtGui.QPixmap(1920, 1080)
         self.canvasPixmap.fill(Qt.transparent)
 
-        self.prevState = self.canvasPixmap.copy()
         self.penSize = DEFAULT_PEN_SIZE
         self.eraserSize = DEFAULT_ERASER_SIZE
         self.penColor = QtGui.QColor('#000000')
@@ -130,7 +129,8 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.measureStart = QtCore.QPoint()
         self.measureEnd = QtCore.QPoint()
         self.measureLabelRef = QtWidgets.QLabel()
-        self.preservedState = self.canvasPixmap.copy()
+        self.states = [self.canvasPixmap.copy()]
+        self.activeState = 0
 
         self.spellSizeFt = DEFAULT_SPELL_SIZE_FT
         self.spellSize = int((DEFAULT_SPELL_SIZE_FT / 5) * DEFAULT_FIVE_FOOT_SIZE)
@@ -158,8 +158,9 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.mapPixmap = self.mapPixmap.scaled(1920, 1080, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.canvasPixmap = QtGui.QPixmap(1920, 1080)
         self.canvasPixmap.fill(Qt.transparent)
-        self.prevState = self.canvasPixmap.copy()
-        self.preservedState = self.canvasPixmap.copy()
+        self.states.clear()
+        self.states = [self.canvasPixmap.copy()]
+        self.activeState = 0
         self.updateMap()
 
     # Handles mouse presses depending on current mouse mode
@@ -167,7 +168,6 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         # Drawing and erasing mouse press event handler
         if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
             self.lastPos = event.pos()
-            self.prevState = self.canvasPixmap.copy()
             painter = QtGui.QPainter(self.canvasPixmap)
 
             pen = painter.pen()
@@ -182,7 +182,6 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             painter.drawPoint(event.pos())
             painter.end()
             self.updateMap()
-            self.preservedState = self.canvasPixmap.copy()
         # Casting mouse press event handler
         elif self.mouseMode == MouseMode.Casting:
             if self.spellType == SpellType.Cone:
@@ -190,9 +189,8 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
                     self.coneOrigin = event.pos().toPoint()
                     return
 
-            self.prevState = self.preservedState.copy()
             self.updateMap()
-            self.preservedState = self.canvasPixmap.copy()
+            self.recordNewState()
             self.coneOrigin = None
         # Measuring mouse press event handler
         elif self.mouseMode == MouseMode.Measuring:
@@ -218,7 +216,6 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             painter.end()
             self.updateMap()
             self.lastPos = event.pos()
-            self.preservedState = self.canvasPixmap.copy()
         # Measuring mouse move event handler
         elif self.mouseMode == MouseMode.Measuring:
             mouseEnd = event.pos().toPoint()
@@ -246,7 +243,7 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
                     xAdjusted = self.measureStart.x() + abs(yDiff)
                     self.measureEnd = QtCore.QPoint(xAdjusted, mouseEnd.y())
 
-            newCanvasPixmap = self.preservedState.copy()
+            newCanvasPixmap = self.states[self.activeState].copy()
             painter = QtGui.QPainter(newCanvasPixmap)
 
             pen = QtGui.QPen()
@@ -272,7 +269,7 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         # Handles casting mouse hover events
         if self.mouseMode == MouseMode.Casting:
             if self.spellType != SpellType.Cone or self.coneOrigin is not None:
-                newCanvasPixmap = self.preservedState.copy()
+                newCanvasPixmap = self.states[self.activeState].copy()
                 painter = QtGui.QPainter(newCanvasPixmap)
 
                 pen = QtGui.QPen()
@@ -329,7 +326,7 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
     # Handles mouse leaving hover range depending on mouse mode
     def hoverLeaveEvent(self, event):
         if self.mouseMode == MouseMode.Casting:
-            self.canvasPixmap = self.preservedState
+            self.canvasPixmap = self.states[self.activeState].copy()
             self.updateMap()
 
     # Handles mouse release events depending on current mouse mode
@@ -337,11 +334,12 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         # Drawing and erasing mouse release event handler
         if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
             self.lastPos = QtCore.QPoint()
+            self.recordNewState()
         # Measuring mouse release event handler
         elif self.mouseMode == MouseMode.Measuring:
             if self.measureEnd == self.measureStart:
                 return
-            self.canvasPixmap = self.preservedState
+            self.canvasPixmap = self.states[self.activeState].copy()
             self.fiveFootSize = abs(self.measureStart.x() - self.measureEnd.x())
             self.setSpellSize(self.spellSizeFt)
             self.measureLabelRef.setText("5 ft: %s px" % self.fiveFootSize)
@@ -351,13 +349,26 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
     def setDisplayRef(self, ref):
         self.displayRef = ref
 
-    # Returns the canvas to its previous state
-    def undoLast(self):
-        self.canvasPixmap = self.prevState
-        self.updateMap()
-        if self.displayRef is not None:
-            self.displayRef.updatePixmap(self.pixmap())
-        self.preservedState = self.canvasPixmap.copy()
+    # Sets the new active state for undo/redo purposes
+    def recordNewState(self):
+        while self.activeState < len(self.states) - 1:
+            self.states.pop(len(self.states) - 1)
+        self.states.append(self.canvasPixmap.copy())
+        self.activeState += 1
+
+    # Returns the canvas to the previous state
+    def undoEdit(self):
+        if self.activeState > 0:
+            self.activeState -= 1
+            self.canvasPixmap = self.states[self.activeState].copy()
+            self.updateMap()
+
+    # Returns the canvas to the next undone state
+    def redoEdit(self):
+        if self.activeState < len(self.states) - 1:
+            self.activeState += 1
+            self.canvasPixmap = self.states[self.activeState].copy()
+            self.updateMap()
 
     # Sets a new size for the draw tool
     def setPenSize(self, size):
