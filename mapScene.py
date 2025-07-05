@@ -24,11 +24,17 @@ class MouseMode(Enum):
     Measuring = 3
     Casting = 4
 
+# All viable spell types that can be shown
 class SpellType(Enum):
     Square = 0
     Circle = 1
     Cone = 2
 
+# All click types that can be read from a mouse
+class MouseClick(Enum):
+    Left = 0
+    Right = 1
+    Middle = 2
 
 # Scene that contains all active 2D objects
 class QMapScene(QtWidgets.QGraphicsScene):
@@ -120,26 +126,31 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.canvasPixmap = QtGui.QPixmap(1920, 1080)
         self.canvasPixmap.fill(Qt.transparent)
 
+        # Painter variables
         self.penSize = DEFAULT_PEN_SIZE
         self.eraserSize = DEFAULT_ERASER_SIZE
         self.penColor = QtGui.QColor('#000000')
         self.lastPos = QtCore.QPoint()
 
+        # Measuring variables
         self.fiveFootSize = DEFAULT_FIVE_FOOT_SIZE
         self.measureStart = QtCore.QPoint()
         self.measureEnd = QtCore.QPoint()
         self.measureLabelRef = QtWidgets.QLabel()
-        self.states = [self.canvasPixmap.copy()]
-        self.activeState = 0
 
+        # Spell casting variables
         self.spellSizeFt = DEFAULT_SPELL_SIZE_FT
         self.spellSize = int((DEFAULT_SPELL_SIZE_FT / 5) * DEFAULT_FIVE_FOOT_SIZE)
         self.spellType = SpellType.Square
         self.coneOrigin = None
         self.showPlayers = True
 
+        # Screen function variables
+        self.states = [self.canvasPixmap.copy()]
+        self.activeState = 0
         self.displayRef = None
         self.mouseMode = MouseMode.Drawing
+        self.clickType = None
 
     # Updates the map in viewport and display by drawing edited maps over the main mat
     def updateMap(self, updateDisplay=True):
@@ -165,104 +176,124 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
 
     # Handles mouse presses depending on current mouse mode
     def mousePressEvent(self, event):
-        # Drawing and erasing mouse press event handler
-        if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
-            self.lastPos = event.pos()
-            painter = QtGui.QPainter(self.canvasPixmap)
+        # Handles mouse press events when left button is used
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clickType = MouseClick.Left
 
-            pen = painter.pen()
-            if self.mouseMode == MouseMode.Erasing:
-                painter.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_Clear)
-                pen.setWidth(self.eraserSize)
-            else:
-                pen.setWidth(self.penSize)
+            # Drawing and erasing left mouse press event handler
+            if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
+                self.lastPos = event.pos()
+                painter = QtGui.QPainter(self.canvasPixmap)
 
-            pen.setColor(self.penColor)
-            painter.setPen(pen)
-            painter.drawPoint(event.pos())
-            painter.end()
-            self.updateMap()
-        # Casting mouse press event handler
-        elif self.mouseMode == MouseMode.Casting:
-            if self.spellType == SpellType.Cone:
-                if self.coneOrigin is None:
-                    self.coneOrigin = event.pos().toPoint()
-                    return
+                pen = painter.pen()
+                if self.mouseMode == MouseMode.Erasing:
+                    painter.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_Clear)
+                    pen.setWidth(self.eraserSize)
+                else:
+                    pen.setWidth(self.penSize)
 
-            self.updateMap()
-            self.recordNewState()
+                pen.setColor(self.penColor)
+                painter.setPen(pen)
+                painter.drawPoint(event.pos())
+                painter.end()
+                self.updateMap()
+
+            # Casting left mouse press event handler
+            elif self.mouseMode == MouseMode.Casting:
+                if self.spellType == SpellType.Cone:
+                    if self.coneOrigin is None:
+                        self.coneOrigin = event.pos().toPoint()
+                        return
+
+                self.updateMap()
+                self.recordNewState()
+                self.coneOrigin = None
+
+            # Measuring left mouse press event handler
+            elif self.mouseMode == MouseMode.Measuring:
+                self.measureStart = event.pos().toPoint()
+                self.measureEnd = event.pos().toPoint()
+
+        # Handles mouse press events when right button is used
+        elif event.button() == Qt.MouseButton.RightButton:
+            self.clickType = MouseClick.Right
+
+            # Casting right mouse press event handler
             self.coneOrigin = None
-        # Measuring mouse press event handler
-        elif self.mouseMode == MouseMode.Measuring:
-            self.measureStart = event.pos().toPoint()
-            self.measureEnd = event.pos().toPoint()
-
-    # Handles mouse movement depending on current mouse mode
-    def mouseMoveEvent(self, event):
-        # Drawing and erasing mouse move event handler
-        if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
-            painter = QtGui.QPainter(self.canvasPixmap)
-
-            pen = painter.pen()
-            if self.mouseMode == MouseMode.Erasing:
-                painter.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_Clear)
-                pen.setWidth(self.eraserSize)
-            else:
-                pen.setWidth(self.penSize)
-            pen.setColor(self.penColor)
-            painter.setPen(pen)
-
-            painter.drawLine(self.lastPos, event.pos())
-            painter.end()
+            self.canvasPixmap = self.states[self.activeState].copy()
             self.updateMap()
-            self.lastPos = event.pos()
-        # Measuring mouse move event handler
-        elif self.mouseMode == MouseMode.Measuring:
-            mouseEnd = event.pos().toPoint()
-            xDiff = self.measureStart.x() - mouseEnd.x()
-            yDiff = self.measureStart.y() - mouseEnd.y()
 
-            # Makes Y distance the same as X distance if X distance is wider
-            if abs(xDiff) > abs(yDiff):
-                # Makes the square go upwards if mouse is higher than where it started
-                if yDiff > 0:
-                    yAdjusted = self.measureStart.y() - abs(xDiff)
-                    self.measureEnd = QtCore.QPoint(mouseEnd.x(), yAdjusted)
-                # Makes the square go downwards if mouse is lower than or the same as where it started
+
+    # Handles mouse movement while held depending on current mouse mode
+    def mouseMoveEvent(self, event):
+        # Handles mouse move events when the left button is held
+        if self.clickType == MouseClick.Left:
+
+            # Drawing and erasing mouse move event handler
+            if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
+                painter = QtGui.QPainter(self.canvasPixmap)
+
+                pen = painter.pen()
+                if self.mouseMode == MouseMode.Erasing:
+                    painter.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_Clear)
+                    pen.setWidth(self.eraserSize)
                 else:
-                    yAdjusted = self.measureStart.y() + abs(xDiff)
-                    self.measureEnd = QtCore.QPoint(mouseEnd.x(), yAdjusted)
-            # Makes X distance the same as Y distance if Y distance is wider
-            else:
-                # Makes the square go left if mouse is left of where it started
-                if xDiff > 0:
-                    xAdjusted = self.measureStart.x() - abs(yDiff)
-                    self.measureEnd = QtCore.QPoint(xAdjusted, mouseEnd.y())
-                # Makes the square go right if the mouse is right of or the same as where it started
+                    pen.setWidth(self.penSize)
+                pen.setColor(self.penColor)
+                painter.setPen(pen)
+
+                painter.drawLine(self.lastPos, event.pos())
+                painter.end()
+                self.updateMap()
+                self.lastPos = event.pos()
+
+            # Measuring mouse move event handler
+            elif self.mouseMode == MouseMode.Measuring:
+                mouseEnd = event.pos().toPoint()
+                xDiff = self.measureStart.x() - mouseEnd.x()
+                yDiff = self.measureStart.y() - mouseEnd.y()
+
+                # Makes Y distance the same as X distance if X distance is wider
+                if abs(xDiff) > abs(yDiff):
+                    # Makes the square go upwards if mouse is higher than where it started
+                    if yDiff > 0:
+                        yAdjusted = self.measureStart.y() - abs(xDiff)
+                        self.measureEnd = QtCore.QPoint(mouseEnd.x(), yAdjusted)
+                    # Makes the square go downwards if mouse is lower than or the same as where it started
+                    else:
+                        yAdjusted = self.measureStart.y() + abs(xDiff)
+                        self.measureEnd = QtCore.QPoint(mouseEnd.x(), yAdjusted)
+                # Makes X distance the same as Y distance if Y distance is wider
                 else:
-                    xAdjusted = self.measureStart.x() + abs(yDiff)
-                    self.measureEnd = QtCore.QPoint(xAdjusted, mouseEnd.y())
+                    # Makes the square go left if mouse is left of where it started
+                    if xDiff > 0:
+                        xAdjusted = self.measureStart.x() - abs(yDiff)
+                        self.measureEnd = QtCore.QPoint(xAdjusted, mouseEnd.y())
+                    # Makes the square go right if the mouse is right of or the same as where it started
+                    else:
+                        xAdjusted = self.measureStart.x() + abs(yDiff)
+                        self.measureEnd = QtCore.QPoint(xAdjusted, mouseEnd.y())
 
-            newCanvasPixmap = self.states[self.activeState].copy()
-            painter = QtGui.QPainter(newCanvasPixmap)
+                newCanvasPixmap = self.states[self.activeState].copy()
+                painter = QtGui.QPainter(newCanvasPixmap)
 
-            pen = QtGui.QPen()
-            pen.setColor(MEASURE_SQUARE_COLOR)
-            pen.setWidth(MEASURE_SQUARE_WIDTH)
-            painter.setPen(pen)
+                pen = QtGui.QPen()
+                pen.setColor(MEASURE_SQUARE_COLOR)
+                pen.setWidth(MEASURE_SQUARE_WIDTH)
+                painter.setPen(pen)
 
-            brushColor = QtGui.QColor(MEASURE_SQUARE_COLOR)
-            brushColor.setAlphaF(MEASURE_SQUARE_OPACITY)
-            brush = QtGui.QBrush(brushColor, Qt.SolidPattern)
+                brushColor = QtGui.QColor(MEASURE_SQUARE_COLOR)
+                brushColor.setAlphaF(MEASURE_SQUARE_OPACITY)
+                brush = QtGui.QBrush(brushColor, Qt.SolidPattern)
 
-            measureRect = QtCore.QRect(self.measureStart, self.measureEnd)
-            painter.drawRect(measureRect.normalized())
-            painter.fillRect(measureRect, brush)
+                measureRect = QtCore.QRect(self.measureStart, self.measureEnd)
+                painter.drawRect(measureRect.normalized())
+                painter.fillRect(measureRect, brush)
 
-            painter.end()
+                painter.end()
 
-            self.canvasPixmap = newCanvasPixmap
-            self.updateMap(updateDisplay=False)
+                self.canvasPixmap = newCanvasPixmap
+                self.updateMap(updateDisplay=False)
 
     # Handles mouse hover events depending on current mouse mode
     def hoverMoveEvent(self, event):
@@ -331,19 +362,22 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
 
     # Handles mouse release events depending on current mouse mode
     def mouseReleaseEvent(self, event):
-        # Drawing and erasing mouse release event handler
-        if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
-            self.lastPos = QtCore.QPoint()
-            self.recordNewState()
-        # Measuring mouse release event handler
-        elif self.mouseMode == MouseMode.Measuring:
-            if self.measureEnd == self.measureStart:
-                return
-            self.canvasPixmap = self.states[self.activeState].copy()
-            self.fiveFootSize = abs(self.measureStart.x() - self.measureEnd.x())
-            self.setSpellSize(self.spellSizeFt)
-            self.measureLabelRef.setText("5 ft: %s px" % self.fiveFootSize)
-            self.updateMap()
+        # Handles mouse release events when caused by a left button
+        if self.clickType == MouseClick.Left:
+            # Drawing and erasing mouse release event handler
+            if self.mouseMode == MouseMode.Drawing or self.mouseMode == MouseMode.Erasing:
+                self.lastPos = QtCore.QPoint()
+                self.recordNewState()
+            # Measuring mouse release event handler
+            elif self.mouseMode == MouseMode.Measuring:
+                if self.measureEnd == self.measureStart:
+                    return
+                self.canvasPixmap = self.states[self.activeState].copy()
+                self.fiveFootSize = abs(self.measureStart.x() - self.measureEnd.x())
+                self.setSpellSize(self.spellSizeFt)
+                self.measureLabelRef.setText("5 ft: %s px" % self.fiveFootSize)
+                self.updateMap()
+        self.clickType = None
 
     # Connects canvas to the display window
     def setDisplayRef(self, ref):
