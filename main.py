@@ -165,7 +165,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Add size input for line width
         lineWidth = QSizeInput("Line Width:", 3)
         lineWidth.input.setText(str(DEFAULT_LINE_WIDTH_FT))
-        lineWidth.input.textChanged.connect(lambda: print())
+        lineWidth.input.textChanged.connect(lambda: self.mapScene.mapItem.setLineWidth(lineWidth.getText()))
         widthLabel = QtWidgets.QLabel()
         widthLabel.setText("ft")
         lineWidth.addWidget(widthLabel)
