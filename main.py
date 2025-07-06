@@ -156,6 +156,21 @@ class MainWindow(QtWidgets.QMainWindow):
         coneButton.clicked.connect(lambda: self.mapView.mapItem.setSpellType(SpellType.Cone))
         layout.addWidget(coneButton)
 
+        # Add button for line spells
+        lineButton = QIconButton("Assets/lineIcon.png")
+        lineButton.clicked.connect(lambda: self.mapView.setMouseMode(MouseMode.Casting))
+        lineButton.clicked.connect(lambda: self.mapView.mapItem.setSpellType(SpellType.Line))
+        layout.addWidget(lineButton)
+
+        # Add size input for line width
+        lineWidth = QSizeInput("Line Width:", 3)
+        lineWidth.input.setText(str(DEFAULT_LINE_WIDTH_FT))
+        lineWidth.input.textChanged.connect(lambda: print())
+        widthLabel = QtWidgets.QLabel()
+        widthLabel.setText("ft")
+        lineWidth.addWidget(widthLabel)
+        layout.addLayout(lineWidth)
+
         layout.addStretch()
 
     # Opens the display window for the player monitor

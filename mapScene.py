@@ -8,6 +8,7 @@ DEFAULT_PEN_SIZE = 4
 DEFAULT_ERASER_SIZE = 50
 DEFAULT_FIVE_FOOT_SIZE = 50
 DEFAULT_SPELL_SIZE_FT = 10
+DEFAULT_LINE_WIDTH_FT = 5
 
 MEASURE_SQUARE_COLOR = QtGui.QColor("#FF0000")
 MEASURE_SQUARE_OPACITY = 0.2
@@ -29,6 +30,7 @@ class SpellType(Enum):
     Square = 0
     Circle = 1
     Cone = 2
+    Line = 3
 
 # All click types that can be read from a mouse
 class MouseClick(Enum):
@@ -142,7 +144,7 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
         self.spellSizeFt = DEFAULT_SPELL_SIZE_FT
         self.spellSize = int((DEFAULT_SPELL_SIZE_FT / 5) * DEFAULT_FIVE_FOOT_SIZE)
         self.spellType = SpellType.Square
-        self.coneOrigin = None
+        self.spellOrigin = None
         self.showPlayers = True
 
         # Screen function variables
@@ -200,14 +202,14 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
 
             # Casting left mouse press event handler
             elif self.mouseMode == MouseMode.Casting:
-                if self.spellType == SpellType.Cone:
-                    if self.coneOrigin is None:
-                        self.coneOrigin = event.pos().toPoint()
+                if self.spellType == SpellType.Cone or self.spellType == SpellType.Line:
+                    if self.spellOrigin is None:
+                        self.spellOrigin = event.pos().toPoint()
                         return
 
                 self.updateMap()
                 self.recordNewState()
-                self.coneOrigin = None
+                self.spellOrigin = None
 
             # Measuring left mouse press event handler
             elif self.mouseMode == MouseMode.Measuring:
@@ -219,9 +221,10 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
             self.clickType = MouseClick.Right
 
             # Casting right mouse press event handler
-            self.coneOrigin = None
-            self.canvasPixmap = self.states[self.activeState].copy()
-            self.updateMap()
+            if self.spellType == SpellType.Cone or self.spellType == SpellType.Line:
+                self.spellOrigin = None
+                self.canvasPixmap = self.states[self.activeState].copy()
+                self.updateMap()
 
 
     # Handles mouse movement while held depending on current mouse mode
@@ -299,7 +302,7 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
     def hoverMoveEvent(self, event):
         # Handles casting mouse hover events
         if self.mouseMode == MouseMode.Casting:
-            if self.spellType != SpellType.Cone or self.coneOrigin is not None:
+            if self.spellType != SpellType.Cone or self.spellOrigin is not None:
                 newCanvasPixmap = self.states[self.activeState].copy()
                 painter = QtGui.QPainter(newCanvasPixmap)
 
@@ -321,16 +324,16 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
                     painter.drawRect(spellRect)
                 elif self.spellType == SpellType.Circle:
                     painter.drawEllipse(event.pos().toPoint(), self.spellSize, self.spellSize)
-                else:
-                    xDiff = event.pos().toPoint().x() - self.coneOrigin.x()
-                    yDiff = event.pos().toPoint().y() - self.coneOrigin.y()
+                elif self.spellType == SpellType.Cone:
+                    xDiff = event.pos().toPoint().x() - self.spellOrigin.x()
+                    yDiff = event.pos().toPoint().y() - self.spellOrigin.y()
                     dist = math.sqrt(pow(abs(xDiff), 2) + pow(abs(yDiff), 2))
 
                     if dist != 0:
                         # Get ratio of spellSizes to distance of mouse from origin then calc cone end point
                         ratio = self.spellSize / dist
-                        xMid = (xDiff * ratio) + self.coneOrigin.x()
-                        yMid = (yDiff * ratio) + self.coneOrigin.y()
+                        xMid = (xDiff * ratio) + self.spellOrigin.x()
+                        yMid = (yDiff * ratio) + self.spellOrigin.y()
 
                         # Make corners by going out in both directions half of spellSize(diff * ratio)
                         # using an opposite slope
@@ -340,13 +343,13 @@ class QCanvasItem(QtWidgets.QGraphicsPixmapItem):
                                                 int(yMid - ((xDiff * ratio)/2)))
                     else:
                         # Set default corners for when mouse has not moved
-                        corner1 = QtCore.QPoint(int(self.coneOrigin.x() - (self.spellSize / 2)),
-                                                self.coneOrigin.y() + self.spellSize)
-                        corner2 = QtCore.QPoint(int(self.coneOrigin.x() + (self.spellSize / 2)),
-                                                self.coneOrigin.y() + self.spellSize)
+                        corner1 = QtCore.QPoint(int(self.spellOrigin.x() - (self.spellSize / 2)),
+                                                self.spellOrigin.y() + self.spellSize)
+                        corner2 = QtCore.QPoint(int(self.spellOrigin.x() + (self.spellSize / 2)),
+                                                self.spellOrigin.y() + self.spellSize)
 
                     conePolygon = QtGui.QPolygon()
-                    conePolygon << self.coneOrigin << corner1 << corner2
+                    conePolygon << self.spellOrigin << corner1 << corner2
                     painter.drawPolygon(conePolygon)
 
                 painter.end()
